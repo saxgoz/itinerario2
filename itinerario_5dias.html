@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Itinerario 5 días - Guadalajara (sin conexión)</title>
+  <style>
+    :root{
+      --bg:#ffffff; --card:#fbfbfb; --accent:#2b6cb0; --text:#222;
+      --muted:#666; --border:#e6e6e6; --shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    html,body{height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial; background:var(--bg); color:var(--text);}
+    header{background:linear-gradient(90deg,#2b6cb0,#4c8bd6); color:#fff; padding:20px 16px; text-align:center;}
+    header h1{margin:0;font-size:18px;}
+    header p{margin:6px 0 0;font-size:13px;opacity:.95}
+
+    .wrap{max-width:980px; margin:0 auto; padding:14px;}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; box-shadow:var(--shadow);}
+    h2{font-size:16px; margin:0 0 8px;}
+    h3{font-size:14px; margin:10px 0 6px; color:var(--accent)}
+    ul{margin:6px 0 10px 18px; color:var(--muted)}
+    .small{font-size:13px; color:var(--muted)}
+    footer{padding:16px;text-align:center;font-size:13px;color:var(--muted)}
+    @media (min-width:720px){ .wrap{padding:28px;} header h1{font-size:20px} }
+
+    /* Tabs sin JavaScript */
+    .tabs{display:block}
+    .tabs input[type="radio"]{position:absolute; opacity:0; pointer-events:none}
+    .tabs nav{display:flex; gap:8px; padding:12px; overflow-x:auto; background:#fff; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:5}
+    .tabs nav label{flex:0 0 auto; padding:8px 12px; border-radius:999px; border:1px solid var(--border); background:#fff; font-size:14px; cursor:pointer; white-space:nowrap}
+    .tabs nav label.active{background:#eef5ff; border-color:#cfe0ff; color:#1e4fa5}
+    .tabs section{display:none; margin-top:12px}
+    #t1:checked ~ nav label[for="t1"],
+    #t2:checked ~ nav label[for="t2"],
+    #t3:checked ~ nav label[for="t3"],
+    #t4:checked ~ nav label[for="t4"],
+    #t5:checked ~ nav label[for="t5"]{background:#eef5ff; border-color:#cfe0ff; color:#1e4fa5}
+    #t1:checked ~ section[data-tab="t1"],
+    #t2:checked ~ section[data-tab="t2"],
+    #t3:checked ~ section[data-tab="t3"],
+    #t4:checked ~ section[data-tab="t4"],
+    #t5:checked ~ section[data-tab="t5"]{display:block}
+
+    /* Modo impresión: muestra todo */
+    @media print{
+      .tabs nav{display:none}
+      .tabs section{display:block}
+      header{position:static}
+    }
+    /* Overlay del mapa (móvil primero) */
+    .overlay{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; z-index:50}
+    .overlay .panel{position:absolute; inset:0; background:var(--card); border-top-left-radius:12px; border-top-right-radius:12px}
+    .overlay .bar{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border); background:var(--card)}
+    .overlay .bar h3{margin:0; font-size:15px; color:var(--text)}
+    .overlay .bar button{border:1px solid var(--border); background:#fff; padding:8px 12px; border-radius:8px}
+    #mapCanvas{position:absolute; top:50px; left:0; right:0; bottom:0}
+    /* Botón en cada día y chips de lugares */
+    .day-actions{margin:6px 0 8px; display:flex; gap:8px; flex-wrap:wrap}
+    .btn{padding:7px 10px; border-radius:8px; border:1px solid var(--border); background:#fff; font-size:13px}
+    .chips{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0}
+    .chip{display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border:1px solid var(--border); border-radius:999px; background:#fff; font-size:12px}
+    .chip a{color:#1e40af; text-decoration:none}
+  </style>
+  <!-- Leaflet (requiere internet para el mapa) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Awesome Markers + Bootstrap (para íconos y colores como el mapa original) -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+  <noscript>
+    <style>.tabs section{display:block}</style>
+  </noscript>
+  <meta name="color-scheme" content="light dark">
+  <style media="(prefers-color-scheme: dark)">
+    :root{ --bg:#0b1220; --card:#0f172a; --text:#e5e7eb; --muted:#9aa4b2; --border:#1f2937 }
+    header{background:linear-gradient(90deg,#1e40af,#1d4ed8)}
+    .tabs nav{background:#0b1220}
+  </style>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+</head>
+<body>
+  <header>
+    <h1>Itinerario de 5 días — Guadalajara</h1>
+    <p>Desde: Best Western Plus Gran Hotel Centro Histórico</p>
+  </header>
+
+  <div class="wrap">
+    <!-- Overlay del mapa -->
+    <div id="mapOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="Mapa de lugares">
+      <div class="panel">
+        <div class="bar">
+          <h3 id="mapTitle">Mapa</h3>
+          <div style="display:flex; gap:8px">
+            <button id="btnAll" class="btn">Todos</button>
+            <button id="btnClose" class="btn">Cerrar</button>
+          </div>
+        </div>
+        <div id="mapCanvas" aria-label="Mapa interactivo"></div>
+      </div>
+    </div>
+    <div class="tabs card">
+      <!-- Controles (sin JS) -->
+      <input type="radio" name="tab" id="t1" checked>
+      <input type="radio" name="tab" id="t2">
+      <input type="radio" name="tab" id="t3">
+      <input type="radio" name="tab" id="t4">
+      <input type="radio" name="tab" id="t5">
+
+      <nav aria-label="Días">
+        <label for="t1">Día 1</label>
+        <label for="t2">Día 2 (Zoológico)</label>
+        <label for="t3">Día 3</label>
+        <label for="t4">Día 4</label>
+        <label for="t5">Día 5</label>
+      </nav>
+
+      <section data-tab="t1">
+        <h2>Día 1 – Centro Histórico y tradición tapatía</h2>
+        <div class="day-actions"><button class="btn" data-day="1">Ver mapa del día</button></div>
+        <div class="chips" data-chips="1"></div>
+        <h3>Mañana</h3>
+        <ul>
+          <li>Plaza de Armas – corazón del centro.</li>
+          <li>Catedral Metropolitana – ícono arquitectónico.</li>
+          <li>Rotonda de los Jaliscienses Ilustres.</li>
+          <li>Teatro Degollado – revisa si hay recorridos guiados.</li>
+        </ul>
+        <h3>Tarde</h3>
+        <ul>
+          <li>Mercado Libertad (San Juan de Dios) – a 5 min a pie; prueba birria o carne en su jugo.</li>
+          <li>Paseo por Plaza Tapatía.</li>
+        </ul>
+        <h3>Noche</h3>
+        <ul>
+          <li>Hospicio Cabañas iluminado (exteriores).</li>
+          <li>Cena ligera en un café del centro.</li>
+        </ul>
+      </section>
+
+      <section data-tab="t2">
+        <h2>Día 2 – Zoológico y naturaleza</h2>
+        <p class="small">Salida desde Best Western (15–20 min en taxi/Uber)</p>
+        <div class="day-actions"><button class="btn" data-day="2">Ver mapa del día</button></div>
+        <div class="chips" data-chips="2"></div>
+        <h3>Mañana</h3>
+        <ul>
+          <li>Zoológico Guadalajara — Safari Masai Mara, Sky Zoo (teleférico), herpetario, acuario y aviario.</li>
+        </ul>
+        <h3>Tarde</h3>
+        <ul>
+          <li>Comida dentro del zoológico o en locales cercanos.</li>
+          <li>Parque Barranca de Huentitán — miradores y senderos cortos.</li>
+        </ul>
+        <h3>Noche</h3>
+        <ul>
+          <li>Regreso al centro.</li>
+          <li>Cena en La Chata o La Fuente (cantina tradicional).</li>
+          <li>Paseo por Plaza de Armas y Catedral iluminada.</li>
+        </ul>
+      </section>
+
+      <section data-tab="t3">
+        <h2>Día 3 – Arte y cultura contemporánea</h2>
+        <div class="day-actions"><button class="btn" data-day="3">Ver mapa del día</button></div>
+        <div class="chips" data-chips="3"></div>
+        <h3>Mañana</h3>
+        <ul>
+          <li>Museo Cabañas — murales de José Clemente Orozco.</li>
+          <li>Parque Morelos — paseo relajado.</li>
+        </ul>
+        <h3>Tarde</h3>
+        <ul>
+          <li>Museo de las Artes (MUSA).</li>
+          <li>Comida en Av. Juárez o Chapultepec.</li>
+        </ul>
+        <h3>Noche</h3>
+        <ul>
+          <li>Avenida Chapultepec — bares, cafés y vida nocturna.</li>
+        </ul>
+      </section>
+
+      <section data-tab="t4">
+        <h2>Día 4 – Historia y barrios emblemáticos</h2>
+        <div class="day-actions"><button class="btn" data-day="4">Ver mapa del día</button></div>
+        <div class="chips" data-chips="4"></div>
+        <h3>Mañana</h3>
+        <ul>
+          <li>Barrio de San Juan de Dios y Templo de San Francisco de Asís.</li>
+          <li>Paseo por Calzada Independencia.</li>
+        </ul>
+        <h3>Tarde</h3>
+        <ul>
+          <li>Panteón de Belén — visita guiada (leyendas locales).</li>
+          <li>Café Benito u otro café histórico.</li>
+        </ul>
+        <h3>Noche</h3>
+        <ul>
+          <li>Obra en el Teatro Degollado o concierto en PALCCO (revisa cartelera).</li>
+        </ul>
+      </section>
+
+      <section data-tab="t5">
+        <h2>Día 5 – Gastronomía y compras</h2>
+        <div class="day-actions"><button class="btn" data-day="5">Ver mapa del día</button></div>
+        <div class="chips" data-chips="5"></div>
+        <h3>Mañana</h3>
+        <ul>
+          <li>Desayuno: tortas ahogadas en puesto tradicional.</li>
+          <li>Mercado Corona — dulces típicos y recuerdos.</li>
+        </ul>
+        <h3>Tarde</h3>
+        <ul>
+          <li>Andares o Galerías Guadalajara — compras modernas.</li>
+          <li>Museo del Periodismo y las Artes Gráficas.</li>
+        </ul>
+        <h3>Noche</h3>
+        <ul>
+          <li>Cena de despedida en Hueso o Alcalde (cocina de autor).</li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="card">
+      <h3>Consejos rápidos</h3>
+      <ul>
+        <li>Transporte al zoológico: taxi/Uber ~15–20 min desde el centro.</li>
+        <li>Lleva calzado cómodo y agua para los paseos largos.</li>
+        <li>Si quieres mariachi en vivo, busca restaurantes con show en la noche.</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>
+    Itinerario local (sin conexión) • Guarda este archivo como <strong>itinerario_5dias.html</strong> y ábrelo desde Archivos o cualquier navegador.
+  </footer>
+  <script>
+    // Datos por día (coordenadas y nombres)
+    const dataByDay = {
+      1: [
+        { name: 'Plaza de Armas', lat: 20.6767, lng: -103.3475 },
+        { name: 'Catedral Metropolitana', lat: 20.6764, lng: -103.3472 },
+        { name: 'Rotonda de los Jaliscienses Ilustres', lat: 20.6773, lng: -103.3468 },
+        { name: 'Teatro Degollado', lat: 20.6770, lng: -103.3455 },
+        { name: 'Mercado Libertad (San Juan de Dios)', lat: 20.6739, lng: -103.3386 },
+        { name: 'Plaza Tapatía', lat: 20.6752, lng: -103.3430 },
+        { name: 'Hospicio Cabañas', lat: 20.6741, lng: -103.3382 },
+      ],
+      2: [
+        { name: 'Zoológico Guadalajara', lat: 20.7242, lng: -103.2940 },
+        { name: 'Barranca de Huentitán (Mirador)', lat: 20.7510, lng: -103.2935 },
+      ],
+      3: [
+        { name: 'Museo Cabañas', lat: 20.6741, lng: -103.3382 },
+        { name: 'Parque Morelos', lat: 20.6783, lng: -103.3390 },
+        { name: 'MUSA', lat: 20.6730, lng: -103.3611 },
+        { name: 'Avenida Chapultepec', lat: 20.6736, lng: -103.3700 },
+      ],
+      4: [
+        { name: 'Barrio de San Juan de Dios', lat: 20.6750, lng: -103.3390 },
+        { name: 'Templo de San Francisco de Asís', lat: 20.6788, lng: -103.3438 },
+        { name: 'Calzada Independencia', lat: 20.6795, lng: -103.3412 },
+        { name: 'Panteón de Belén', lat: 20.6841, lng: -103.3580 },
+        { name: 'Café Benito', lat: 20.6748, lng: -103.3480 },
+      ],
+      5: [
+        { name: 'Mercado Corona', lat: 20.6749, lng: -103.3492 },
+        { name: 'Andares', lat: 20.7092, lng: -103.4154 },
+        { name: 'Galerías Guadalajara', lat: 20.6734, lng: -103.4281 },
+        { name: 'Museo del Periodismo y las Artes Gráficas', lat: 20.6761, lng: -103.3494 },
+        { name: 'Restaurante Hueso', lat: 20.6753, lng: -103.3822 },
+        { name: 'Restaurante Alcalde', lat: 20.6730, lng: -103.3790 },
+      ],
+    };
+
+    // Metadatos por día para replicar el estilo del primer mapa
+    const dayMeta = {
+      1: { title: 'Centro Histórico', color: 'red' },
+      2: { title: 'Zoológico y naturaleza', color: 'blue' },
+      3: { title: 'Arte y Cultura', color: 'green' },
+      4: { title: 'Historia y Barrios', color: 'orange' },
+      5: { title: 'Gastronomía y Compras', color: 'purple' },
+    };
+
+    // Rellenar chips con enlaces rápidos
+    const chipContainers = document.querySelectorAll('.chips');
+    chipContainers.forEach(c => {
+      const day = Number(c.getAttribute('data-chips'));
+      (dataByDay[day]||[]).forEach((p, idx) => {
+        const el = document.createElement('span');
+        el.className = 'chip';
+        const g = document.createElement('a');
+        g.href = `https://www.google.com/maps?q=${p.lat},${p.lng}`;
+        g.target = '_blank';
+        g.rel = 'noopener';
+        g.textContent = 'Google Maps';
+        el.textContent = p.name + ' ';
+        el.appendChild(g);
+        el.addEventListener('click', (ev) => {
+          if (ev.target.tagName.toLowerCase() === 'a') return;
+          openMap(day, idx);
+        });
+        c.appendChild(el);
+      });
+    });
+
+    // Mapa (overlay)
+    let map, layerGroup;
+    const overlay = document.getElementById('mapOverlay');
+    const mapCanvas = document.getElementById('mapCanvas');
+    const mapTitle = document.getElementById('mapTitle');
+    const btnClose = document.getElementById('btnClose');
+    const btnAll = document.getElementById('btnAll');
+
+    function initMap() {
+      if (map) return;
+      map = L.map(mapCanvas, { center: [20.6736, -103.3440], zoom: 13 });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap',
+      }).addTo(map);
+      layerGroup = L.layerGroup().addTo(map);
+    }
+
+    function openOverlay(title){
+      overlay.style.display = 'block';
+      mapTitle.textContent = title;
+      setTimeout(() => { map && map.invalidateSize(); }, 50);
+    }
+    function closeOverlay(){ overlay.style.display = 'none'; }
+    btnClose.addEventListener('click', closeOverlay);
+
+    function createIconForColor(color){
+      if (L.AwesomeMarkers && L.AwesomeMarkers.icon) {
+        return L.AwesomeMarkers.icon({
+          icon: 'info-sign',
+          prefix: 'glyphicon',
+          markerColor: color,
+          iconColor: 'white',
+          extraClasses: 'fa-rotate-0',
+        });
+      }
+      return null;
+    }
+
+    function addMarkers(points, day){
+      layerGroup.clearLayers();
+      const bounds = [];
+      const color = day ? (dayMeta[day]?.color || 'blue') : null;
+      const title = day ? (dayMeta[day]?.title || `Día ${day}`) : null;
+      points.forEach(p => {
+        const icon = color ? createIconForColor(color) : null;
+        const m = icon ? L.marker([p.lat, p.lng], { icon }) : L.marker([p.lat, p.lng]);
+        m.addTo(layerGroup);
+        const popupHeader = day ? `Día ${day} - ${title}: ` : '';
+        m.bindPopup(`<div><strong>${popupHeader}${p.name}</strong><br/><a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${p.lat},${p.lng}">Abrir en Google Maps</a></div>`);
+        bounds.push([p.lat, p.lng]);
+      });
+      if (bounds.length) map.fitBounds(bounds, { padding: [20,20] });
+    }
+
+    function openMap(day, focusIndex){
+      initMap();
+      const points = dataByDay[day] || [];
+      openOverlay(`Mapa – Día ${day}`);
+      addMarkers(points, day);
+      if (typeof focusIndex === 'number' && points[focusIndex]){
+        const p = points[focusIndex];
+        map.setView([p.lat, p.lng], 16);
+      }
+    }
+
+    // Botones "Ver mapa del día"
+    document.querySelectorAll('.day-actions .btn').forEach(btn => {
+      const day = Number(btn.getAttribute('data-day'));
+      btn.addEventListener('click', () => openMap(day));
+    });
+
+    // Ver todos (todas las capas de todos los días)
+    btnAll.addEventListener('click', () => {
+      initMap();
+      const all = [];
+      Object.entries(dataByDay).forEach(([d, pts]) => {
+        const color = dayMeta[d]?.color || 'blue';
+        const title = dayMeta[d]?.title || `Día ${d}`;
+        pts.forEach(p => {
+          all.push({ ...p, __color: color, __title: title, __day: Number(d) });
+        });
+      });
+      openOverlay('Mapa – Todos los días');
+      // Pintar todos respetando colores por día
+      layerGroup.clearLayers();
+      const bounds = [];
+      all.forEach(p => {
+        const icon = createIconForColor(p.__color);
+        const m = icon ? L.marker([p.lat, p.lng], { icon }) : L.marker([p.lat, p.lng]);
+        m.addTo(layerGroup);
+        m.bindPopup(`<div><strong>Día ${p.__day} - ${p.__title}: ${p.name}</strong><br/><a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${p.lat},${p.lng}">Abrir en Google Maps</a></div>`);
+        bounds.push([p.lat, p.lng]);
+      });
+      if (bounds.length) map.fitBounds(bounds, { padding: [20,20] });
+    });
+  </script>
+</body>
+</html>
+
+
